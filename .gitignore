@@ -1,0 +1,17 @@
+# Virtual Environment (isey push nahi karte)
+venv/
+.venv/
+env/
+
+# Environment Variables & Secrets (Most Important!)
+.env
+
+# Python cache artifacts (run karne par auto-generate hote hain)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Operating System files
+.DS_Store
+Thumbs.db
