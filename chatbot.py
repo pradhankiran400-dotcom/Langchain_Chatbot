@@ -1,10 +1,13 @@
+import os
 from langchain_groq import ChatGroq
 import streamlit as st
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from dotenv import load_dotenv
 
-# Load environment variables (API Keys)
-load_dotenv()
+# Load environment variables (API Keys) from the script's directory
+script_dir = os.path.dirname(os.path.abspath(__file__))
+dotenv_path = os.path.join(script_dir, '.env')
+load_dotenv(dotenv_path)
 
 # Set Streamlit page config
 st.set_page_config(
@@ -116,14 +119,21 @@ if len(st.session_state.chat_history) > 0 and isinstance(st.session_state.chat_h
     if st.session_state.chat_history[0].content != selected_role_prompt:
         st.session_state.chat_history[0] = SystemMessage(content=selected_role_prompt)
 
+# Retrieve the GROQ_API_KEY from streamlit secrets or environment variables
+groq_api_key = st.secrets.get("GROQ_API_KEY") or os.getenv("GROQ_API_KEY")
+
 # Initialize the Llama model
 # We wrap this to avoid recreating the object constantly
 @st.cache_resource
-def get_model():
-    return ChatGroq(model="llama-3.1-8b-instant")
+def get_model(api_key):
+    return ChatGroq(model="llama-3.1-8b-instant", api_key=api_key)
 
 try:
-    model = get_model()
+    if not groq_api_key:
+        st.error("GROQ_API_KEY not found! Please make sure you have added GROQ_API_KEY to your Streamlit secrets or a local .env file.")
+        st.stop()
+    else:
+        model = get_model(groq_api_key)
 except Exception as e:
     st.error(f"Error initializing model: {e}")
 
