@@ -1,4 +1,10 @@
-streamlit
-langchain-core
+fastapi
+uvicorn
+jinja2
+python-multipart
 langchain-groq
+langchain-core
 python-dotenv
+requests
+pillow
+streamlit
