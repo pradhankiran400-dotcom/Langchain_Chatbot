@@ -1,17 +1,16 @@
-# Virtual Environment (isey push nahi karte)
+# Environment Variables (Secrets)
+.env
+
+# Python Virtual Environment
 venv/
 .venv/
 env/
 
-# Environment Variables & Secrets (Most Important!)
-.env
-
-# Python cache artifacts (run karne par auto-generate hote hain)
+# Python Cache
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 
-# Operating System files
-.DS_Store
-Thumbs.db
+# VS Code settings (Optional)
+.vscode/
