@@ -18,13 +18,22 @@ def extract_youtube_transcript(url):
 
     try:
         from youtube_transcript_api import YouTubeTranscriptApi
-        # Instantiate and fetch using the API instance
         api_instance = YouTubeTranscriptApi()
-        transcript_list = api_instance.fetch(video_id)
+        
+        # List all available transcripts
+        transcript_list = api_instance.list(video_id)
+        
+        # Try to find English first, fallback to the first available transcript
+        try:
+            transcript_obj = transcript_list.find_transcript(["en"])
+        except Exception:
+            transcript_obj = next(iter(transcript_list))
+            
+        transcript_data = transcript_obj.fetch()
         
         # Safely extract text from snippet objects or dictionaries
         snippets = []
-        for item in transcript_list:
+        for item in transcript_data:
             if isinstance(item, dict):
                 snippets.append(item.get("text", ""))
             else:
