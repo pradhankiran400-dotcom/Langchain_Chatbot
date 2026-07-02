@@ -1,11 +1,18 @@
 import streamlit as st
-from langchain_groq import ChatGroq
-from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
-from dotenv import load_dotenv
-import requests
-import urllib.parse
 import os
+from dotenv import load_dotenv
+from langchain_groq import ChatGroq
+from google import genai
+from google.genai import types
 
+# Import custom navigation modules
+import chat_studio
+import pdf_studio
+import art_studio
+import vision_studio
+import web_studio
+
+# Load environment variables
 load_dotenv()
 
 st.set_page_config(
@@ -15,12 +22,16 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Initialize Session State Variables
 if "system_prompt" not in st.session_state:
     st.session_state.system_prompt = "You are a helpful assistant."
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
-    
+
+if "pdf_messages" not in st.session_state:
+    st.session_state.pdf_messages = []
+
 # Initialize LangChain Groq Model
 @st.cache_resource
 def get_model():
@@ -28,103 +39,75 @@ def get_model():
 
 model = get_model()
 
+# Initialize Google GenAI Client
+@st.cache_resource
+def get_genai_client():
+    return genai.Client(api_key=os.environ.get("GOOGLE_API_KEY"))
 
+genai_client = get_genai_client()
+
+def transcribe_audio(audio_file):
+    """
+    Transcribes audio using Google's Gemini Generative AI model (gemini-2.5-flash).
+    """
+    try:
+        audio_bytes = audio_file.read()
+        audio_part = types.Part.from_bytes(
+            data=audio_bytes,
+            mime_type=audio_file.type
+        )
+        response = genai_client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=[
+                audio_part,
+                "Transcribe the following audio accurately. Output ONLY the plain transcription text, with no additional commentary, headings, or markdown formatting."
+            ]
+        )
+        return response.text.strip() if response.text else ""
+    except Exception as e:
+        st.error(f"Error transcribing audio with GenAI: {e}")
+        return None
+
+# Sidebar Setup
 st.sidebar.title("✨ Custom AI Studio")
 
+# Check for Hugging Face API Token in Environment
+hf_token = os.environ.get("HUGGINGFACEHUB_API_TOKEN", "")
 
-app_mode = st.sidebar.radio("Navigation", ["💬 AI Chat Studio", "🎨 AI Art Studio"])
+# If not found, prompt in sidebar
+if not hf_token:
+    st.sidebar.subheader("🔑 Hugging Face Config")
+    hf_token = st.sidebar.text_input("Enter HF API Token:", type="password", help="Get a free token from huggingface.co to unlock high quality image models.")
+
+# Navigation Radio
+app_mode = st.sidebar.radio("Navigation", ["💬 AI Chat Studio", "📄 PDF Chat (RAG)", "🎨 AI Art Studio", "🖼️ Vision Studio (Image to Prompt)", "🌐 Link Chat (RAG)"])
 
 st.sidebar.divider()
-st.sidebar.subheader("🤖 Bot Behavior & Persona")
 
-# Persona Text Area
-user_system_prompt = st.sidebar.text_area(
-    "Set AI Persona / System Prompt:",
-    value=st.session_state.system_prompt,
-    height=100,
-    help="Define how the AI should act (e.g. 'You are a pirate', 'You are a Python expert')"
+# Fallback Assistant Links
+st.sidebar.subheader("💡 Need alternatives?")
+st.sidebar.markdown(
+    """
+    If you don't find the answer from this chatbot, try:
+    - 🌐 [Gemini](https://gemini.google.com)
+    - 💬 [ChatGPT](https://chatgpt.com)
+    - 🧠 [Claude](https://claude.ai)
+    """
 )
-
-if user_system_prompt != st.session_state.system_prompt:
-    st.session_state.system_prompt = user_system_prompt
-    st.sidebar.success("Updated Persona!")
-
-# Quick Presets
-st.sidebar.markdown("**Quick Presets:**")
-col1, col2 = st.sidebar.columns(2)
-with col1:
-    if st.button("💡 Assistant", use_container_width=True):
-        st.session_state.system_prompt = "You are a helpful assistant."
-        st.rerun()
-    if st.button("🏴‍☠️ Pirate", use_container_width=True):
-        st.session_state.system_prompt = "You are a pirate matey! Speak like a legendary sea captain in every response!"
-        st.rerun()
-with col2:
-    if st.button("💻 Developer", use_container_width=True):
-        st.session_state.system_prompt = "You are an expert Python software engineer. Provide concise, clean code examples."
-        st.rerun()
-
 st.sidebar.divider()
-if st.sidebar.button("🗑️ Clear Chat History", use_container_width=True):
-    st.session_state.messages = []
-    st.rerun()
 
+# Route to the appropriate module
 if app_mode == "💬 AI Chat Studio":
-    st.title("💬 AI Chat Studio")
-    st.caption(f"🎯 **Active Persona:** *{st.session_state.system_prompt}*")
+    chat_studio.render_chat_studio(model, genai_client, transcribe_audio)
 
-    # Display chat messages from history on app rerun
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
-
-    # Accept user input
-    if prompt := st.chat_input("Ask anything..."):
-        # Display user message in chat message container
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
-
-        # Build LangChain message history starting with SystemMessage
-        langchain_messages = [SystemMessage(content=st.session_state.system_prompt)]
-        for msg in st.session_state.messages:
-            if msg["role"] == "user":
-                langchain_messages.append(HumanMessage(content=msg["content"]))
-            elif msg["role"] == "assistant":
-                langchain_messages.append(AIMessage(content=msg["content"]))
-
-        # Display assistant response in chat message container
-        with st.chat_message("assistant"):
-            with st.spinner("Thinking..."):
-                response = model.invoke(langchain_messages)
-                st.markdown(response.content)
-        
-        st.session_state.messages.append({"role": "assistant", "content": response.content})
+elif app_mode == "📄 PDF Chat (RAG)":
+    pdf_studio.render_pdf_studio(model, transcribe_audio)
 
 elif app_mode == "🎨 AI Art Studio":
-    st.title("🎨 AI Art Studio")
-    st.markdown("Transform your creative text prompts into AI artwork.")
+    art_studio.render_art_studio(hf_token)
 
-    art_prompt = st.text_input("Describe the image you want to create:", placeholder="e.g., A futuristic cyberpunk city at sunset with neon lights")
+elif app_mode == "🖼️ Vision Studio (Image to Prompt)":
+    vision_studio.render_vision_studio(genai_client)
 
-    if st.button("✨ Generate Artwork", type="primary"):
-        if not art_prompt.strip():
-            st.warning("Please enter a description first!")
-        else:
-            with st.spinner("Crafting your visual masterpiece..."):
-                fallback_url = f"https://image.pollinations.ai/prompt/{urllib.parse.quote(art_prompt)}"
-                img_response = requests.get(fallback_url)
-                
-                if img_response.status_code == 200:
-                    st.image(img_response.content, caption=art_prompt, use_column_width=True)
-                    st.download_button(
-                        label="📥 Download Artwork",
-                        data=img_response.content,
-                        file_name="generated_artwork.png",
-                        mime="image/png"
-                    )
-                else:
-                    st.error("Failed to generate image. Please try again.")
-
-
-                    
+elif app_mode == "🌐 Link Chat (RAG)":
+    web_studio.render_web_studio(model, transcribe_audio)

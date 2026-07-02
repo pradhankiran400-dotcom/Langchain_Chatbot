@@ -8,3 +8,13 @@ python-dotenv
 requests
 pillow
 streamlit
+pypdf
+groq
+google-genai
+python-dotenv
+sounddevice
+scipy
+numpy
+pyttsx3
+beautifulsoup4
+youtube-transcript-api
