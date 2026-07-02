@@ -5,12 +5,21 @@ from langchain_groq import ChatGroq
 from google import genai
 from google.genai import types
 
+import importlib
+
 # Import custom navigation modules
 import chat_studio
 import pdf_studio
 import art_studio
 import vision_studio
 import web_studio
+
+# Force reload modules during development so changes take effect immediately
+importlib.reload(chat_studio)
+importlib.reload(pdf_studio)
+importlib.reload(art_studio)
+importlib.reload(vision_studio)
+importlib.reload(web_studio)
 
 # Load environment variables
 load_dotenv()
@@ -22,9 +31,36 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+DEFAULT_SYSTEM_PROMPT = """You are the official assistant for Custom AI Studio.
+Your goal is to guide users, answer questions, and suggest how to use this platform.
+
+Here are the details of the Custom AI Studio features:
+1. 💬 AI Chat Studio:
+   - Customize Bot Persona: Change the prompt in the sidebar, or use presets (Assistant, Pirate, Developer).
+   - Voice input: Use the voice chat microphone in the sidebar to chat using speech.
+2. 📄 PDF Chat (RAG):
+   - Upload any PDF document to ask questions about its content. Supports voice/text.
+3. 🎨 AI Art Studio:
+   - Generate images from text descriptions.
+   - Choose between Pollinations AI (free, no key) or Hugging Face Inference (SDXL, SD 1.5, Flux Schnell). If using HF, enter your API token in the sidebar.
+4. 🖼️ Vision Studio (Image to Prompt):
+   - Upload a PNG/JPG/JPEG image.
+   - Click "Generate Art Prompt" to describe the image in detail, or ask questions about the picture.
+5. 🌐 Link Chat (RAG):
+   - Input a YouTube link or website URL. Click "Analyze Link" to load context, then ask questions about it.
+6. 💡 Alternative Links:
+   - Check the bottom of the sidebar for quick links to Google Gemini, ChatGPT, and Claude.
+
+Always be friendly, guide users to appropriate tabs, and suggest features of this AI Studio.
+
+*IMPORTANT CONSTRAINTS:*
+- If a user sends/pastes a website link or YouTube video URL, or asks you to read/analyze/summarize a link in this general chat room: explain politely that you cannot load or analyze external links here, and redirect them to the "🌐 Link Chat (RAG)" screen in the sidebar where they can easily analyze it.
+- If a user asks you to analyze, look at, describe, or answer questions about an image or picture: explain politely that you cannot see images or files in this general chat room, and redirect them to the "🖼️ Vision Studio (Image to Prompt)" screen in the sidebar where they can upload and ask questions about the picture.
+"""
+
 # Initialize Session State Variables
 if "system_prompt" not in st.session_state:
-    st.session_state.system_prompt = "You are a helpful assistant."
+    st.session_state.system_prompt = DEFAULT_SYSTEM_PROMPT
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -98,7 +134,7 @@ st.sidebar.divider()
 
 # Route to the appropriate module
 if app_mode == "💬 AI Chat Studio":
-    chat_studio.render_chat_studio(model, genai_client, transcribe_audio)
+    chat_studio.render_chat_studio(model, genai_client, transcribe_audio, DEFAULT_SYSTEM_PROMPT)
 
 elif app_mode == "📄 PDF Chat (RAG)":
     pdf_studio.render_pdf_studio(model, transcribe_audio)

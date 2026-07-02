@@ -92,4 +92,10 @@ def render_art_studio(hf_token):
                             else:
                                 st.error(f"Hugging Face API returned error status {response.status_code}: {response.text[:200]}")
                         except Exception as e:
-                            st.error(f"Error querying Hugging Face API: {e}")
+                            err_msg = str(e)
+                            if "NameResolutionError" in err_msg or "Failed to resolve" in err_msg:
+                                st.error("📡 **Network Connection/DNS Error**: Failed to connect to Hugging Face. Please check your internet connection or verify if `api-inference.huggingface.co` is blocked on your network or firewall.")
+                            elif "ConnectionRefusedError" in err_msg or "ConnectionRefused" in err_msg:
+                                st.error("🔌 **Connection Refused**: Could not establish connection to Hugging Face servers. Please check your proxy/VPN settings and try again.")
+                            else:
+                                st.error(f"Error querying Hugging Face API: {e}")

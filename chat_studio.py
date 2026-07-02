@@ -1,7 +1,7 @@
 import streamlit as st
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 
-def render_chat_studio(model, genai_client, transcribe_audio):
+def render_chat_studio(model, genai_client, transcribe_audio, default_system_prompt):
     st.sidebar.subheader("🤖 Bot Behavior & Persona")
     user_system_prompt = st.sidebar.text_area(
         "Set AI Persona / System Prompt:",
@@ -18,7 +18,7 @@ def render_chat_studio(model, genai_client, transcribe_audio):
     col1, col2 = st.sidebar.columns(2)
     with col1:
         if st.button("💡 Assistant", use_container_width=True):
-            st.session_state.system_prompt = "You are a helpful assistant."
+            st.session_state.system_prompt = default_system_prompt
             st.rerun()
         if st.button("🏴‍☠️ Pirate", use_container_width=True):
             st.session_state.system_prompt = "You are a pirate matey! Speak like a legendary sea captain in every response!"
@@ -66,6 +66,23 @@ def render_chat_studio(model, genai_client, transcribe_audio):
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
+
+    # Suggest redirection if the latest user message contains link or image intent
+    user_messages = [m for m in st.session_state.messages if m["role"] == "user"]
+    if user_messages:
+        latest_user_content = user_messages[-1]["content"]
+        
+        # Check for link intent
+        has_url = any(url_kw in latest_user_content.lower() for url_kw in ["http://", "https://", "www.", "youtube.com", "youtu.be"])
+        wants_link = has_url or any(link_kw in latest_user_content.lower() for link_kw in ["analyze link", "read link", "summarize link", "rag on link", "chat with link", "analyze website", "analyze video", "analyze youtube"])
+        
+        # Check for image intent
+        wants_image = any(img_kw in latest_user_content.lower() for img_kw in ["analyze image", "upload image", "check this picture", "read this image", "look at this photo", "analyze picture", "explain this image", "describe this image", "describe this picture", "what is in this picture"])
+        
+        if wants_link:
+            st.info("ℹ️ **Tip:** It looks like you'd like to analyze a link! To parse and chat with YouTube transcripts or webpage articles using RAG, please switch to the **🌐 Link Chat (RAG)** screen in the sidebar.")
+        elif wants_image:
+            st.info("ℹ️ **Tip:** It looks like you'd like to analyze an image! To upload, ask questions, or generate art prompts from images, please switch to the **🖼️ Vision Studio (Image to Prompt)** screen in the sidebar.")
 
     if prompt := st.chat_input("Ask anything..."):
         st.session_state.messages.append({"role": "user", "content": prompt})
