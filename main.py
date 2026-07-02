@@ -24,6 +24,36 @@ importlib.reload(web_studio)
 # Load environment variables
 load_dotenv()
 
+# Verify that required API keys are configured (especially when deployed to Streamlit Cloud)
+groq_key = os.environ.get("GROQ_API_KEY", "").strip()
+google_key = os.environ.get("GOOGLE_API_KEY", "").strip()
+
+if not groq_key or not google_key:
+    st.set_page_config(page_title="API Configuration Required", page_icon="🔑")
+    st.error("🔑 **Required API Keys are Missing**")
+    st.info(
+        """
+        To run this Custom AI Studio, you must configure your API keys.
+        
+        **For Local Development:**
+        Create a `.env` file in the project folder:
+        ```env
+        GROQ_API_KEY=gsk_your_groq_key_here
+        GOOGLE_API_KEY=your_google_api_key_here
+        HUGGINGFACEHUB_API_TOKEN=your_huggingface_token_here
+        ```
+        
+        **For Streamlit Cloud Deployment:**
+        Go to your **Streamlit Dashboard**, select your app, click **Manage App > Settings > Secrets**, and paste your keys in TOML format:
+        ```toml
+        GROQ_API_KEY = "gsk_your_groq_key_here"
+        GOOGLE_API_KEY = "your_google_api_key_here"
+        HUGGINGFACEHUB_API_TOKEN = "your_huggingface_token_here"
+        ```
+        """
+    )
+    st.stop()
+
 st.set_page_config(
     page_title="Personalized AI Studio",
     page_icon="🤖",
