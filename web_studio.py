@@ -1,24 +1,20 @@
 import streamlit as st
 import urllib.parse
 import requests
+import re
 from langchain_core.messages import HumanMessage
 
 def extract_youtube_transcript(url):
     """
     Extracts the transcript of a YouTube video using youtube-transcript-api.
     """
-    video_id = None
-    # Parse video id from various format options
-    if "youtube.com/watch" in url:
-        parsed_url = urllib.parse.urlparse(url)
-        video_id = urllib.parse.parse_qs(parsed_url.query).get("v", [None])[0]
-    elif "youtu.be/" in url:
-        video_id = url.split("youtu.be/")[-1].split("?")[0]
-    elif "youtube.com/embed/" in url:
-        video_id = url.split("youtube.com/embed/")[-1].split("?")[0]
+    # Highly robust regex to extract 11-character YouTube video ID
+    regex = r'(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/|youtube\.com\/shorts\/)([^"&?\/\s]{11})'
+    match = re.search(regex, url)
+    video_id = match.group(1) if match else None
 
     if not video_id:
-        raise ValueError("Could not extract a valid YouTube video ID from the provided link.")
+        raise ValueError("Could not extract a valid 11-character YouTube video ID from the provided link.")
 
     try:
         from youtube_transcript_api import YouTubeTranscriptApi
@@ -37,7 +33,15 @@ def extract_youtube_transcript(url):
         transcript = " ".join(snippets)
         return transcript
     except Exception as e:
-        raise Exception(f"Failed to fetch YouTube transcript: {e}")
+        error_name = type(e).__name__
+        if "TranscriptsDisabled" in error_name:
+            raise Exception("Subtitles/Transcripts are disabled for this YouTube video. Please try a video that has captions/subtitles enabled.")
+        elif "NoTranscriptFound" in error_name:
+            raise Exception("No transcript found in English or other auto-generated languages. Please try a different video.")
+        elif "VideoUnavailable" in error_name or "InvalidVideoId" in error_name:
+            raise Exception("This YouTube video is unavailable, private, or the link is invalid.")
+        else:
+            raise Exception(f"Failed to fetch YouTube transcript: {e}")
 
 def extract_webpage_text(url):
     """
